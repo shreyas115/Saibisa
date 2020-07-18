@@ -5,12 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Saibisa"
         mc:Ignorable="d"
-        Title="Receipt Generator" Height="650" Width="1200">
+        ResizeMode="NoResize"
+        Title="Receipt Generator" Height="650" Width="600" SizeChanged="Window_SizeChanged">
     <Grid>
         <Grid.ColumnDefinitions >
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="2*" x:Name="previewColumn"/>
+            <ColumnDefinition Width="0" x:Name="previewColumn"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="120"/>
@@ -28,7 +29,8 @@
                 <RowDefinition Height="3"/>
             </Grid.RowDefinitions>
             <Image Source="Images/Logo.jpg" Width="200" Height="117" Grid.Column="0" Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            <Label Content="SAIBISA FOUNDATION" FontFamily="Arial" FontSize="40" FontWeight="Bold" Foreground="#942417" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock TextWrapping="WrapWithOverflow" Text="SAIBISA FOUNDATION"  FontFamily="Arial" FontSize="40" FontWeight="Bold" 
+                       TextAlignment="Center"  Foreground="#942417" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             <Label Background="#942417" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"/>
             <Label Background="#CC7A00" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"/>
         </Grid>
@@ -64,7 +66,7 @@
             </StackPanel>
             <StackPanel Orientation="Vertical" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="20,5,20,0">
                 <Label Content="Address" FontFamily="Arial" FontSize="14"  VerticalAlignment="Top"/>
-                <TextBox x:Name="txtAddr" AcceptsReturn="True" FontFamily="Arial" 
+                <TextBox x:Name="txtAddr" AcceptsReturn="True" FontFamily="Arial" FontSize="14"
                      VerticalAlignment="Stretch" TextWrapping="Wrap" Height="60"/>
             </StackPanel>
 
@@ -101,8 +103,10 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Button Content="Generate Receipt" Click="Button_Click" Width="150" Margin="0,10,10,10" Padding="10"  HorizontalAlignment="Center" VerticalAlignment="Center" Background="#942417" Foreground="White"/>
-                <Button Content="Reset" Click="ResetClicked" Width="150" Margin="10,10,0,10" Padding="10" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#942417" Foreground="White"/>
+                <Button Content="Preview Receipt" Click="PreviewClicked" Width="120" Margin="0,10,10,10" Padding="10"  HorizontalAlignment="Center" VerticalAlignment="Center" Background="#942417" Foreground="White"/>
+                <Button Content="Send Email" Click="SendEmailClicked" Width="120" Margin="10,10,0,10" Padding="10" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#942417" Foreground="White"/>
+                <Button Content="Reset" Click="ResetClicked" Width="120" Margin="10,10,0,10" Padding="10" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#942417" Foreground="White"/>
+                <Button Content="Close" Click="CloseClicked" Width="120" Margin="10,10,0,10" Padding="10" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#942417" Foreground="White"/>
             </StackPanel>
         </Grid>
         

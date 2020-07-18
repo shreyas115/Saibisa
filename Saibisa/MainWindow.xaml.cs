@@ -1,21 +1,13 @@
 ﻿using iTextSharp.text.pdf;
+using MahApps.Metro.Controls;
+using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace Saibisa
 {
@@ -24,12 +16,113 @@ namespace Saibisa
     /// </summary>
     public partial class MainWindow : Window
     {
+        bool _isTwoColumn = false;
+        bool _isAdobeInstalled = false;
         public MainWindow()
         {
             InitializeComponent();
-            pdfViewer.Navigate(new Uri("about:blank"));
+            dtDate.SelectedDate = DateTime.Now;
+            cbTowards.Items.Add("Donation");
+            DeleteOldFiles();
+            CheckIfAdobeInstalled();
+            if (!_isAdobeInstalled)
+            {
+                this.Width = 600;
+            }
             CenterWindowOnScreen();
+            txtReceipt.Focus();
         }
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.PreviousSize == e.NewSize)
+                return;
+
+            var w = SystemParameters.PrimaryScreenWidth;
+            var h = SystemParameters.PrimaryScreenHeight;
+
+            this.Left = (w - e.NewSize.Width) / 2;
+            this.Top = (h - e.NewSize.Height) / 2;
+        }
+        public void CheckIfAdobeInstalled()
+        {
+            RegistryKey software = Registry.LocalMachine.OpenSubKey("Software");
+
+            if (software != null)
+            {
+                RegistryKey adobe = null;
+
+                // Try to get 64bit versions of adobe
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    RegistryKey software64 = software.OpenSubKey("Wow6432Node");
+
+                    if (software64 != null)
+                        adobe = software64.OpenSubKey("Adobe");
+                }
+
+                // If a 64bit version is not installed, try to get a 32bit version
+                if (adobe == null)
+                    adobe = software.OpenSubKey("Adobe");
+
+                // If no 64bit or 32bit version can be found, chances are adobe reader is not installed.
+                if (adobe != null)
+                {
+                    RegistryKey acroRead = adobe.OpenSubKey("Acrobat Reader");
+
+                    if (acroRead != null)
+                    {
+                        _isAdobeInstalled = true;
+                        string[] acroReadVersions = acroRead.GetSubKeyNames();
+                        Console.WriteLine("The following version(s) of Acrobat Reader are installed: ");
+
+                        foreach (string versionNumber in acroReadVersions)
+                        {
+                            Console.WriteLine(versionNumber);
+                        }
+                    }
+                    else
+                    {
+                        var result = MessageBox.Show("Adode acrobat reader is required to preview documents, else you can open in browser. Would you like to install the reader?", "Adobe acrobat reader not installed", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                        if (result == MessageBoxResult.Yes)
+                            System.Diagnostics.Process.Start("https://get.adobe.com/reader/otherversions/");
+                    }
+                }
+                else
+                {
+                    var result = MessageBox.Show("Adode acrobat reader is required to preview documents, else you can open in browser. Would you like to install the reader?", "Adobe acrobat reader not installed", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (result == MessageBoxResult.Yes)
+                        System.Diagnostics.Process.Start("https://get.adobe.com/reader/otherversions/");
+                }
+            }
+        }
+
+        private void DeleteOldFiles()
+        {
+            try
+            {
+                bool exists = Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "//Pdfs");
+                if (!exists)
+                    Directory.CreateDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "//Pdfs");
+                DirectoryInfo d = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "//Pdfs");
+                FileInfo[] Files = d.GetFiles("*.pdf");
+                foreach (FileInfo file in Files)
+                {
+                    try
+                    {
+                        file.Delete();
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show( ex.Message+ Environment.NewLine+ ex.InnerException, "Folder Access Error");
+            }
+        }
+
         private void CenterWindowOnScreen()
         {
             double screenWidth = System.Windows.SystemParameters.PrimaryScreenWidth;
@@ -39,26 +132,162 @@ namespace Saibisa
             this.Left = (screenWidth / 2) - (windowWidth / 2);
             this.Top = (screenHeight / 2) - (windowHeight / 2);
         }
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void PreviewClicked(object sender, RoutedEventArgs e)
         {
-            previewColumn.Width = new GridLength(2, GridUnitType.Star);
+            if (PerformValidation())
+            {
+                if (!_isTwoColumn && _isAdobeInstalled)
+                    AnimateToTwoColumns();
+                GeneratePdf();
+            }
+        }
 
-            var path = System.IO.Path.Combine(Environment.CurrentDirectory + "\\Saibisa_Receipt_Template.pdf");
-            PdfReader pdfReader = new PdfReader(path);
-            PdfStamper pdfStamper = new PdfStamper(pdfReader, new FileStream(@"C:/Users/vlpra/OneDrive/Desktop/temp.pdf", FileMode.Create));
-            AcroFields pdfFormFields = pdfStamper.AcroFields;
-            pdfFormFields.SetField("receiptNo",txtReceipt.Text);
-            pdfFormFields.SetField("date",dtDate.Text);
-            pdfFormFields.SetField("from",txtFrom.Text);
-            pdfFormFields.SetField("address",txtAddr.Text);
-            pdfFormFields.SetField("vide",txtVide.Text);
-            pdfFormFields.SetField("drawnOn",txtDrawn.Text);
-            pdfFormFields.SetField("towards",cbTowards.Text);
-            pdfFormFields.SetField("amount",txtRupeeInNumber.Text);
-            pdfFormFields.SetField("pan", txtPan.Text);
-            pdfStamper.FormFlattening = true;
-            pdfStamper.Close();
-            pdfViewer.Navigate(@"C:/Users/vlpra/OneDrive/Desktop/temp.pdf");
+        private bool PerformValidation()
+        {
+            int count = txtAddr.Text.Split('\r').Length - 1;
+            if (count > 2)
+            {
+                MessageBox.Show("Please limit address to 3 lines", "Address Too long", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(txtReceipt.Text.Trim()))
+            {
+                MessageBox.Show("Please enter receipt no", "Receipt number empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtReceipt.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(dtDate.Text.Trim()))
+            {
+                MessageBox.Show("Please enter date of receipt", "Date empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                dtDate.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(txtFrom.Text.Trim()))
+            {
+                MessageBox.Show("Please enter received from", "Received from empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtFrom.Focus();
+                return false;
+            }
+            System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex("^[a-zA-Z]{5}[0-9]{4}[a-zA-Z]{1}$");
+            Match match = regex.Match(txtPan.Text);
+            if (!match.Success)
+            {
+                MessageBox.Show("Please enter valid PAN", "Invalid PAN", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtPan.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(txtAddr.Text.Trim()))
+            {
+                MessageBox.Show("Please enter address", "Address empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtAddr.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(txtRupeeInNumber.Text.Trim()))
+            {
+                MessageBox.Show("Please enter amount", "Amount empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtRupeeInNumber.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(txtRupeeInWord.Text.Trim()))
+            {
+                MessageBox.Show("Please enter amount in words", "Amount in words empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtRupeeInWord.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(txtVide.Text.Trim()))
+            {
+                MessageBox.Show("Please enter vide", "Vide empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtVide.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(txtDrawn.Text.Trim()))
+            {
+                MessageBox.Show("Please enter drawn on", "Drawn on empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtDrawn.Focus();
+                return false;
+            }
+            if (string.IsNullOrEmpty(cbTowards.Text.Trim()))
+            {
+                MessageBox.Show("Please enter towards", "Towards empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                cbTowards.Focus();
+                return false;
+            }
+            return true;
+        }
+        private string GeneratePdf(bool isSendEmail = false)
+        {
+            try
+            {
+                var path = System.IO.Path.Combine(Environment.CurrentDirectory + "\\Saibisa_Receipt_Template.pdf");
+                PdfReader pdfReader = new PdfReader(path);
+                var myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + $@"{Guid.NewGuid().ToString().Replace('-', '_')}.pdf";
+                if (isSendEmail)
+                    myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + txtReceipt.Text + ".pdf";
+                PdfStamper pdfStamper = new PdfStamper(pdfReader, new FileStream(myUniqueFileName, FileMode.Create));
+                AcroFields pdfFormFields = pdfStamper.AcroFields;
+                pdfFormFields.SetField("receiptNo", txtReceipt.Text);
+                pdfFormFields.SetField("date", dtDate.Text);
+                pdfFormFields.SetField("from", txtFrom.Text);
+                pdfFormFields.SetField("address", txtAddr.Text);
+                pdfFormFields.SetField("vide", txtVide.Text);
+                pdfFormFields.SetField("drawnOn", txtDrawn.Text);
+                pdfFormFields.SetField("towards", cbTowards.Text);
+                pdfFormFields.SetField("amount", txtRupeeInNumber.Text + " /-");
+                pdfFormFields.SetField("rupees", txtRupeeInWord.Text + " Only");
+                pdfFormFields.SetField("pan", txtPan.Text);
+                if (chk80G.IsChecked != true)
+                {
+                    pdfFormFields.SetField("80gText1", string.Empty);
+                    pdfFormFields.SetField("80gtext2", string.Empty);
+                }
+                pdfStamper.FormFlattening = true;
+                pdfStamper.Close();
+                if (!isSendEmail)
+                {
+                    if (_isAdobeInstalled)
+                        pdfViewer.Navigate(myUniqueFileName);
+                    else
+                        System.Diagnostics.Process.Start(myUniqueFileName);
+                }
+                return myUniqueFileName;
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show( ex.Message+ Environment.NewLine+ ex.InnerException, "File Access Error");
+                return string.Empty;
+            }
+        }
+
+        private void AnimateToTwoColumns()
+        {
+            this.Width = 1200;
+            _isTwoColumn = true;
+            Storyboard storyboard = new Storyboard();
+
+            Duration duration = new Duration(TimeSpan.FromMilliseconds(1000));
+            CubicEase ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            GridLengthAnimation animation = new GridLengthAnimation();
+            animation.Duration = duration;
+
+            animation.Completed += delegate
+            {
+                // Set the animation to null on completion. This allows the grid to be resized manually
+                previewColumn.BeginAnimation(RowDefinition.HeightProperty, null);
+
+                // Set the final height.
+                previewColumn.Width = new GridLength(2, GridUnitType.Star);
+            };
+
+            storyboard.Children.Add(animation);
+            animation.From = new GridLength(0, GridUnitType.Star);
+            animation.To = new GridLength(2, GridUnitType.Star);
+            Storyboard.SetTarget(animation, previewColumn);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(ColumnDefinition.WidthProperty));
+            storyboard.Children.Add(animation);
+
+            storyboard.Begin();
         }
 
         private void txtRupeeInNumber_LostFocus(object sender, RoutedEventArgs e)
@@ -126,9 +355,55 @@ namespace Saibisa
             return !_regex.IsMatch(text);
         }
 
-        private void ResetClicked (object sender, RoutedEventArgs e)
+        private void ResetClicked(object sender, RoutedEventArgs e)
         {
-            previewColumn.Width = new GridLength(0, GridUnitType.Star);
+            if (_isTwoColumn)
+                AnimateToOneColumn();
+            txtAddr.Text = txtDrawn.Text = txtFrom.Text = cbTowards.Text = txtPan.Text = txtReceipt.Text = txtRupeeInNumber.Text = txtRupeeInWord.Text = txtVide.Text = dtDate.Text = string.Empty;
+        }
+
+        private void AnimateToOneColumn()
+        {
+            this.Width = 600;
+
+            _isTwoColumn = false;
+
+            Storyboard storyboard = new Storyboard();
+
+            Duration duration = new Duration(TimeSpan.FromMilliseconds(1000));
+            CubicEase ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            GridLengthAnimation animation = new GridLengthAnimation();
+            animation.Duration = duration;
+
+            animation.Completed += delegate
+            {
+                // Set the animation to null on completion. This allows the grid to be resized manually
+                previewColumn.BeginAnimation(RowDefinition.HeightProperty, null);
+
+                // Set the final height.
+                previewColumn.Width = new GridLength(0, GridUnitType.Star);
+            };
+
+            storyboard.Children.Add(animation);
+            animation.From = new GridLength(2, GridUnitType.Star);
+            animation.To = new GridLength(0, GridUnitType.Star);
+            Storyboard.SetTarget(animation, previewColumn);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(ColumnDefinition.WidthProperty));
+            storyboard.Children.Add(animation);
+
+            storyboard.Begin();
+        }
+
+        private void SendEmailClicked(object sender, RoutedEventArgs e)
+        {
+            if (PerformValidation())
+                new SendEmail(GeneratePdf(true)).ShowDialog();
+        }
+
+        private void CloseClicked(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 }
