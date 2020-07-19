@@ -17,7 +17,7 @@ namespace Saibisa
     public partial class MainWindow : Window
     {
         bool _isTwoColumn = false;
-        bool _isAdobeInstalled = false;
+        bool _isAdobeInstalled = false; 
         public MainWindow()
         {
             InitializeComponent();
