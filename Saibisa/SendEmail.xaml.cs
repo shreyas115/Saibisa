@@ -1,19 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Data.SQLite;
 using System.Net;
 using System.Net.Mail;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using System.Web;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace Saibisa
 {
@@ -23,12 +14,34 @@ namespace Saibisa
     public partial class SendEmail : Window
     {
         string _attachmentPath = string.Empty;
-        public SendEmail(string attachmentPath)
+        public SendEmail(string attachmentPath, string name)
         {
             InitializeComponent();
             CenterWindowOnScreen();
-            _attachmentPath = attachmentPath;
+            MetadataPopulation(attachmentPath, name);
+            //InsertIntoDb();
         }
+
+        private void MetadataPopulation(string attachmentPath, string name)
+        {
+            _attachmentPath = attachmentPath;
+            subject.Text = "SAIBISA FOUNDATION : Donation Receipt";
+            string greeting = @"Dear {0},
+
+Greetings.
+
+The trustees, volunteers and children of SAIBISA thank you for your great support and noble gesture.Your contribution goes a long way in realizing the objective and fulfilling the dreams of another girl child.
+
+Thank you, again.
+
+Warm Regards,
+
+Ms.Jaya Wahi
+Managing Trustee
+";
+            message.Text = string.Format(greeting, name);
+        }
+
         private void CenterWindowOnScreen()
         {
             double screenWidth = System.Windows.SystemParameters.PrimaryScreenWidth;
@@ -43,21 +56,32 @@ namespace Saibisa
             if (PerformValidation())
                 SendEmailWithAttachment();
         }
+
+        public static string TextToHtml(string text)
+        {
+            text = HttpUtility.HtmlEncode(text);
+            text = text.Replace("\r\n", "\r");
+            text = text.Replace("\n", "\r");
+            text = text.Replace("\r", "<br>\r\n");
+            text = text.Replace("  ", " &nbsp;");
+            return text;
+        }
+
         private bool PerformValidation()
         {
-            bool isEmailValid = Regex.IsMatch(fromEmail.Text, @"\A(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\Z", RegexOptions.IgnoreCase);
-            if (!isEmailValid)
-            {
-                MessageBox.Show("Please enter valid from email id", "Invalid email", MessageBoxButton.OK, MessageBoxImage.Error);
-                fromEmail.Focus();
-                return false;
-            }
-            if (password.Password.Length==0)
-            {
-                MessageBox.Show("Please enter password", "Password empty", MessageBoxButton.OK, MessageBoxImage.Error);
-                password.Focus();
-                return false;
-            }
+            //bool isEmailValid = Regex.IsMatch(fromEmail.Text, @"\A(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\Z", RegexOptions.IgnoreCase);
+            //if (!isEmailValid)
+            //{
+            //    MessageBox.Show("Please enter valid from email id", "Invalid email", MessageBoxButton.OK, MessageBoxImage.Error);
+            //    fromEmail.Focus();
+            //    return false;
+            //}
+            //if (password.Password.Length==0)
+            //{
+            //    MessageBox.Show("Please enter password", "Password empty", MessageBoxButton.OK, MessageBoxImage.Error);
+            //    password.Focus();
+            //    return false;
+            //}
             bool isToEmailValid = Regex.IsMatch(toEmail.Text, @"\A(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\Z", RegexOptions.IgnoreCase);
             if (!isToEmailValid)
             {
@@ -84,12 +108,12 @@ namespace Saibisa
             //Turn on allow less secure app to ON in myaccount.google.com/lesssecureapps
             try
             {
-                MailAddress mailfrom = new MailAddress(fromEmail.Text);
+                MailAddress mailfrom = new MailAddress(Login.username);
                 MailAddress mailto = new MailAddress(toEmail.Text);
                 MailMessage newmsg = new MailMessage(mailfrom, mailto);
-
+                newmsg.IsBodyHtml = true;
                 newmsg.Subject = subject.Text;
-                newmsg.Body = message.Text;
+                newmsg.Body = TextToHtml( message.Text);
 
                 Attachment att = new Attachment(_attachmentPath);
                 newmsg.Attachments.Add(att);
@@ -101,11 +125,12 @@ namespace Saibisa
                     EnableSsl = true,
                     UseDefaultCredentials = false,
                     DeliveryMethod = System.Net.Mail.SmtpDeliveryMethod.Network,
-                    Credentials = new NetworkCredential(mailfrom.Address, password.Password)
+                    Credentials = new NetworkCredential(mailfrom.Address, Login.password)
                 };
 
                 smtp.Send(newmsg);
                 MessageBox.Show("Email sent successfully", "Email sent",MessageBoxButton.OK,MessageBoxImage.Information);
+                InsertIntoDb();
                 this.Close();
             }
             catch (Exception ex)
@@ -117,6 +142,24 @@ namespace Saibisa
                         System.Diagnostics.Process.Start("https://myaccount.google.com/lesssecureapps");
                 }
                 Console.WriteLine(ex.Message);
+            }
+        }
+
+        private void InsertIntoDb()
+        {
+            var dbPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB\\saibisa.db";
+            string cs = string.Format("URI=file:{0}", dbPath);
+            using (var con = new SQLiteConnection(cs, true))
+            {
+                con.Open();
+
+                using (var cmd = new SQLiteCommand(con))
+                {
+                    cmd.CommandText = "INSERT INTO tblReceipts(ReceiptNo, ReceiptDate,DonorName,Address, Pan, Amount,PaymentMode, Purpose) " +
+                        string.Format(" VALUES('{0}','{1}','{2}', '{3}','{4}',{5},'{6}','{7}')",
+                        MainWindow._receiptNo, MainWindow._receiptDate,MainWindow._donorName,MainWindow._address,MainWindow._pan,MainWindow._amount,MainWindow._paymentMode, MainWindow._purpose);
+                    cmd.ExecuteNonQuery();
+                }
             }
         }
 

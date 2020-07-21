@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Data.SQLite;
+using System.IO;
 using System.Windows;
 
 namespace Saibisa
@@ -14,6 +16,41 @@ namespace Saibisa
         {
             InitializeComponent();
             CenterWindowOnScreen();
+            InitDb();
+        }
+
+        private void InitDb()
+        {
+            var dbPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB\\saibisa.db";
+            string cs = string.Format("URI=file:{0}", dbPath);
+            if (!File.Exists(dbPath))
+            {
+                System.Data.SQLite.SQLiteConnection.CreateFile(dbPath);
+                using (var con = new SQLiteConnection(cs, true))
+                {
+                    con.Open();
+
+                    using (var cmd = new SQLiteCommand(con))
+                    {
+                        //cmd.Connection = con;
+                        //cmd.CommandText = "DROP TABLE IF EXISTS cars";
+                        //cmd.ExecuteNonQuery();
+
+                        cmd.CommandText = @"CREATE TABLE tblReceipts(id INTEGER PRIMARY KEY,
+                                                                    ReceiptNo   TEXT, 
+                                                                    ReceiptDate TEXT,
+                                                                    DonorName   TEXT,
+                                                                    Address     TEXT,   
+                                                                    Pan         TEXT,
+                                                                    Amount      REAL,
+                                                                    PaymentMode TEXT,
+                                                                    Purpose     TEXT)";
+                        cmd.ExecuteNonQuery();
+
+
+                    }
+                }
+            }
         }
 
         private void CenterWindowOnScreen()

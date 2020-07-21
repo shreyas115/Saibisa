@@ -2,6 +2,7 @@
 using MahApps.Metro.Controls;
 using Microsoft.Win32;
 using System;
+using System.Data.SQLite;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -17,12 +18,14 @@ namespace Saibisa
     public partial class MainWindow : Window
     {
         bool _isTwoColumn = false;
-        bool _isAdobeInstalled = false; 
+        bool _isAdobeInstalled = false;
+        public static string _receiptNo, _receiptDate, _donorName, _address, _pan, _paymentMode, _purpose;
+        public static float _amount = 0.0f;
         public MainWindow()
         {
             InitializeComponent();
-            dtDate.SelectedDate = DateTime.Now;
-            cbTowards.Items.Add("Donation");
+            NewMethod();
+
             DeleteOldFiles();
             CheckIfAdobeInstalled();
             if (!_isAdobeInstalled)
@@ -31,7 +34,34 @@ namespace Saibisa
             }
             CenterWindowOnScreen();
             txtReceipt.Focus();
+            cbFinYear_Selected(null, null);
         }
+
+        private void NewMethod()
+        {
+            dtDate.SelectedDate = DateTime.Now;
+            cbTowards.Items.Add("Donation - General");
+            cbTowards.Items.Add("Donation - Corpus Fund");
+            cbTowards.Items.Add("Donation - Annadhaan");
+            cbTowards.Items.Add("Donation - Children Education");
+            cbTowards.SelectedIndex = 0;
+            cbFinYear.Items.Add("2018-2019");
+            cbFinYear.Items.Add("2019-2020");
+            cbFinYear.Items.Add("2020-2021");
+            cbFinYear.Items.Add("2021-2022");
+            cbFinYear.Items.Add("2022-2023");
+            cbFinYear.Items.Add("2023-2024");
+            cbFinYear.SelectedIndex = 1;
+            cbSalutation.Items.Add("Mr.");
+            cbSalutation.Items.Add("Ms.");
+            cbSalutation.Items.Add("Messrs.");
+            cbSalutation.SelectedIndex = 0;
+            cbVide.Items.Add("Cash");
+            cbVide.Items.Add("Direct Bank Transfer");
+            cbVide.Items.Add("Cheque/DD");
+            cbVide.SelectedIndex = 0;
+        }
+
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (e.PreviousSize == e.NewSize)
@@ -195,10 +225,10 @@ namespace Saibisa
                 txtRupeeInWord.Focus();
                 return false;
             }
-            if (string.IsNullOrEmpty(txtVide.Text.Trim()))
+            if (string.IsNullOrEmpty(cbVide.Text.Trim()))
             {
                 MessageBox.Show("Please enter vide", "Vide empty", MessageBoxButton.OK, MessageBoxImage.Error);
-                txtVide.Focus();
+                cbVide.Focus();
                 return false;
             }
             if (string.IsNullOrEmpty(txtDrawn.Text.Trim()))
@@ -226,16 +256,24 @@ namespace Saibisa
                     myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + txtReceipt.Text + ".pdf";
                 PdfStamper pdfStamper = new PdfStamper(pdfReader, new FileStream(myUniqueFileName, FileMode.Create));
                 AcroFields pdfFormFields = pdfStamper.AcroFields;
-                pdfFormFields.SetField("receiptNo", txtReceipt.Text);
+                pdfFormFields.SetField("receiptNo", cbFinYear.Text +@"/"+ txtReceipt.Text);
+                _receiptNo = cbFinYear.Text + @"/" + txtReceipt.Text;
                 pdfFormFields.SetField("date", dtDate.Text);
-                pdfFormFields.SetField("from", txtFrom.Text);
+                _receiptDate = dtDate.Text;
+                pdfFormFields.SetField("from", cbSalutation.Text +" "+ txtFrom.Text);
+                _donorName = cbSalutation.Text + " " + txtFrom.Text;
                 pdfFormFields.SetField("address", txtAddr.Text);
-                pdfFormFields.SetField("vide", txtVide.Text);
+                _address = txtAddr.Text;
+                pdfFormFields.SetField("vide", cbVide.Text);
+                _paymentMode = cbVide.Text;
                 pdfFormFields.SetField("drawnOn", txtDrawn.Text);
                 pdfFormFields.SetField("towards", cbTowards.Text);
+                _purpose = cbTowards.Text;
                 pdfFormFields.SetField("amount", txtRupeeInNumber.Text + " /-");
-                pdfFormFields.SetField("rupees", txtRupeeInWord.Text + " Only");
+                _amount = float.Parse(txtRupeeInNumber.Text);
+                pdfFormFields.SetField("rupees", txtRupeeInWord.Text);
                 pdfFormFields.SetField("pan", txtPan.Text);
+                _pan = txtPan.Text;
                 if (chk80G.IsChecked != true)
                 {
                     pdfFormFields.SetField("80gText1", string.Empty);
@@ -295,7 +333,8 @@ namespace Saibisa
             long amount;
             bool isAmountEmpty = Int64.TryParse(txtRupeeInNumber.Text, out amount);
             var rupeeInWord = ConvertNumbertoWords(amount);
-            txtRupeeInWord.Text = rupeeInWord;
+            txtRupeeInWord.Text = rupeeInWord + " Only.";
+            CheckForCashAbove2K();
         }
 
         public string ConvertNumbertoWords(long number)
@@ -355,11 +394,40 @@ namespace Saibisa
             return !_regex.IsMatch(text);
         }
 
+        private void cbFinYear_Selected(object sender, RoutedEventArgs e)
+        {
+            var dbPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB\\saibisa.db";
+            string cs = string.Format("URI=file:{0}", dbPath);
+            using (var con = new SQLiteConnection(cs, true))
+            {
+                con.Open();
+
+                using (var cmd = new SQLiteCommand(con))
+                {
+                    cmd.CommandText = string.Format("SELECT ReceiptNo FROM tblReceipts WHERE ReceiptNo LIKE '{0}%'", cbFinYear.Text);
+                    using (SQLiteDataReader rdr = cmd.ExecuteReader())
+                    {
+                        long receiptNo = 0;
+                        while (rdr.Read())
+                        {
+                            var rcptNo = $"{rdr.GetString(0)}";
+                            var temp = rcptNo.Split('/')[1];
+                            long tmpRecptNo = 0;
+                            Int64.TryParse(temp, out tmpRecptNo);
+                            if (tmpRecptNo > receiptNo)
+                                receiptNo = tmpRecptNo;
+                        }
+                        txtReceipt.Text = (receiptNo+1).ToString().PadLeft(4, '0').Substring(0,4);
+                    }
+                }
+            }
+        }
+
         private void ResetClicked(object sender, RoutedEventArgs e)
         {
             if (_isTwoColumn)
                 AnimateToOneColumn();
-            txtAddr.Text = txtDrawn.Text = txtFrom.Text = cbTowards.Text = txtPan.Text = txtReceipt.Text = txtRupeeInNumber.Text = txtRupeeInWord.Text = txtVide.Text = dtDate.Text = string.Empty;
+            txtAddr.Text = txtDrawn.Text = txtFrom.Text = cbTowards.Text = txtPan.Text = txtReceipt.Text = txtRupeeInNumber.Text = txtRupeeInWord.Text = cbVide.Text = dtDate.Text = string.Empty;
         }
 
         private void AnimateToOneColumn()
@@ -398,12 +466,35 @@ namespace Saibisa
         private void SendEmailClicked(object sender, RoutedEventArgs e)
         {
             if (PerformValidation())
-                new SendEmail(GeneratePdf(true)).ShowDialog();
+                new SendEmail(GeneratePdf(true), cbSalutation.Text + " " + txtFrom.Text).ShowDialog();
         }
 
         private void CloseClicked(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private void cbVide_Selected(object sender, RoutedEventArgs e)
+        {
+            CheckForCashAbove2K();
+        }
+
+        private void CheckForCashAbove2K()
+        {
+            long amount = 0;
+            long.TryParse(txtRupeeInNumber.Text, out amount);
+            if (string.CompareOrdinal(cbVide.Text, "Cash") == 0 && amount > 2000)
+            {
+                imgWarning.Visibility = Visibility.Visible;
+                chk80G.IsChecked = false;
+                chk80G.IsEnabled = false;
+            }
+            else
+            {
+                imgWarning.Visibility = Visibility.Hidden;
+                chk80G.IsEnabled = true;
+                chk80G.IsChecked = true;
+            }
         }
     }
 }

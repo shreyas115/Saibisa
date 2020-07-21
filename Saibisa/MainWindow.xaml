@@ -50,7 +50,14 @@
                       Header="Receipt Details" FontSize="16" FontFamily="Arial" FontWeight="Bold"/>
             <StackPanel Orientation="Vertical" Grid.Row="0" Grid.Column="0" Margin="20,25,0,0" VerticalAlignment="Center">
                 <Label Content="Receipt No" FontFamily="Arial" FontSize="14"  />
-                <TextBox x:Name="txtReceipt" FontFamily="Arial" FontSize="14" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="5*"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Name="cbFinYear" IsEditable="True" Grid.Column="0" FontSize="14" FontFamily="Arial" Margin="0,0,2,0" LostFocus="cbFinYear_Selected"/>
+                    <TextBox x:Name="txtReceipt" Grid.Column="1" FontFamily="Arial" FontSize="14" HorizontalAlignment="Stretch"  />
+                </Grid>
             </StackPanel>
             <StackPanel Orientation="Vertical" Grid.Row="0" Grid.Column="1" Margin="20,25,20,0">
                 <Label Content="Date" FontFamily="Arial" FontSize="14"  VerticalAlignment="Center"/>
@@ -58,7 +65,14 @@
             </StackPanel>
             <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="0" Margin="20,5,0,0">
                 <Label Content="Received with thanks from" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
-                <TextBox x:Name="txtFrom" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="4*"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Name="cbSalutation" IsEditable="True" Grid.Column="0" FontSize="14" FontFamily="Arial" Margin="0,0,2,0"/>
+                    <TextBox x:Name="txtFrom" Grid.Column="1" FontFamily="Arial" FontSize="14" HorizontalAlignment="Stretch"/>
+                </Grid>
             </StackPanel>
             <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="1" Margin="20,5,20,0">
                 <Label Content="PAN" FontFamily="Arial" FontSize="14"  VerticalAlignment="Center"/>
@@ -81,11 +95,14 @@
             </StackPanel>
             <StackPanel Orientation="Vertical" Grid.Row="3" Grid.Column="1" Margin="20,5,10,0">
                 <StackPanel Orientation="Vertical" Margin="0,0,10,0">
-                    <Label Content="Vide Cash / DD / Cheque No." FontFamily="Arial" FontSize="14"  VerticalAlignment="Center"/>
-                    <TextBox x:Name="txtVide" FontFamily="Arial" FontSize="14"  VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Mode of Payment" FontFamily="Arial" FontSize="14"  VerticalAlignment="Center"/>
+                        <Image x:Name="imgWarning" Visibility="Hidden" Source="Images/warning.png" Height="20" Width="20" ToolTip="Please avoid cash collection above Rs. 2000. This is not eligible for 80G." />
+                    </StackPanel>
+                    <ComboBox Name="cbVide" IsEditable="True" FontFamily="Arial" FontSize="14" VerticalAlignment="Center" LostFocus="cbVide_Selected" />
                 </StackPanel>
                 <StackPanel Orientation="Vertical" Margin="0,0,10,0">
-                    <Label Content="Drawn on" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
+                    <Label Content="Payment Details" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
                     <TextBox x:Name="txtDrawn" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
                     <CheckBox x:Name="chk80G" Content="80G Allowed" IsChecked="True" Margin="0,8,0,0" VerticalAlignment="Top" FontFamily="Arial" FontSize="14" />
                 </StackPanel>
