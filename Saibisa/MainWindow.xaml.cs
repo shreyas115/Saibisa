@@ -1,9 +1,15 @@
 ﻿using iTextSharp.text.pdf;
 using MahApps.Metro.Controls;
 using Microsoft.Win32;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data.SQLite;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -231,18 +237,25 @@ namespace Saibisa
                 cbVide.Focus();
                 return false;
             }
-            if (string.IsNullOrEmpty(txtDrawn.Text.Trim()))
-            {
-                MessageBox.Show("Please enter drawn on", "Drawn on empty", MessageBoxButton.OK, MessageBoxImage.Error);
-                txtDrawn.Focus();
-                return false;
-            }
+            //if (string.IsNullOrEmpty(txtDrawn.Text.Trim()))
+            //{
+            //    MessageBox.Show("Please enter drawn on", "Drawn on empty", MessageBoxButton.OK, MessageBoxImage.Error);
+            //    txtDrawn.Focus();
+            //    return false;
+            //}
             if (string.IsNullOrEmpty(cbTowards.Text.Trim()))
             {
                 MessageBox.Show("Please enter towards", "Towards empty", MessageBoxButton.OK, MessageBoxImage.Error);
                 cbTowards.Focus();
                 return false;
             }
+            if(IsReceiptNoExists())
+            {
+                MessageBox.Show("Receipt no already exists, please update and try again", "Duplicate Receipt No.", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtReceipt.Focus();
+                return false;
+            }
+
             return true;
         }
         private string GeneratePdf(bool isSendEmail = false)
@@ -423,11 +436,131 @@ namespace Saibisa
             }
         }
 
+        private bool IsReceiptNoExists()
+        {
+            var dbPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB\\saibisa.db";
+            string cs = string.Format("URI=file:{0}", dbPath);
+            using (var con = new SQLiteConnection(cs, true))
+            {
+                con.Open();
+
+                using (var cmd = new SQLiteCommand(con))
+                {
+                    cmd.CommandText = string.Format("SELECT ReceiptNo FROM tblReceipts WHERE ReceiptNo = '{0}'", cbFinYear.Text + @"/" + txtReceipt.Text);
+                    using (SQLiteDataReader rdr = cmd.ExecuteReader())
+                    {
+                        int receiptCount = 0;
+                        while (rdr.Read())
+                        {
+                            receiptCount++;
+                        }
+                        if (receiptCount > 0)
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+        private void ExportToExcel()
+        {
+            string fileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\Saibisa_Receipt.csv";
+            var dbPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB\\saibisa.db";
+            string cs = string.Format("URI=file:{0}", dbPath);
+            using (var con = new SQLiteConnection(cs, true))
+            {
+                con.Open();
+
+                using (var cmd = new SQLiteCommand(con))
+                {
+                    cmd.CommandText = string.Format("SELECT ReceiptNo, ReceiptDate,DonorName,Address, Pan, Amount,PaymentMode, Purpose FROM tblReceipts ORDER BY ReceiptNo DESC", cbFinYear.Text);
+                    using (SQLiteDataReader dr = cmd.ExecuteReader())
+                    {
+                        using (System.IO.StreamWriter fs = new System.IO.StreamWriter(fileName))
+                        {
+                            fs.Write("Receipt No, Receipt Date,Donor Name,Address, Pan, Amount,Payment Mode, Purpose");
+                            fs.WriteLine();
+
+                            // Loop through the rows and output the data
+                            while (dr.Read())
+                            {
+                                for (int i = 0; i < dr.FieldCount; i++)
+                                {
+                                    string value = dr[i].ToString();
+                                    if (value.Contains(","))
+                                        value = "\"" + value + "\"";
+
+                                    fs.Write(value + ",");
+                                }
+                                fs.WriteLine();
+                            }
+                            fs.Close();
+                        }
+                    }
+                }
+                if(ConvertWithNPOI(fileName.Replace("csv","xlsx"), "Receipt Report", ReadCsv(fileName)))
+                {
+                    tempBrowser.Source = new Uri(fileName.Replace("csv", "xlsx"));
+                }
+            }
+        }
+        private IEnumerable<string[]> ReadCsv(string fileName, char delimiter = ',')
+        {
+            var lines = System.IO.File.ReadAllLines(fileName, Encoding.UTF8).Select(a => a.Split(delimiter));
+            return (lines);
+        }
+        private void ExportClicked(object sender, RoutedEventArgs e)
+        {
+            ExportToExcel();
+        }
+        private static bool ConvertWithNPOI(string excelFileName, string worksheetName, IEnumerable<string[]> csvLines)
+        {
+            if (csvLines == null )
+            {
+                return (false);
+            }
+
+            int rowCount = 0;
+            int colCount = 0;
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet worksheet = workbook.CreateSheet(worksheetName);
+
+            foreach (var line in csvLines)
+            {
+                IRow row = worksheet.CreateRow(rowCount);
+
+                colCount = 0;
+                foreach (var col in line)
+                {
+                    row.CreateCell(colCount).SetCellValue(col);
+                    colCount++;
+                }
+                rowCount++;
+            }
+
+            using (FileStream fileWriter = File.Create(excelFileName))
+            {
+                workbook.Write(fileWriter);
+                fileWriter.Close();
+            }
+
+            worksheet = null;
+            workbook = null;
+
+            return (true);
+        }
+
+        private void Window_Activated(object sender, EventArgs e)
+        {
+            cbFinYear_Selected(null,null);
+        }
+
         private void ResetClicked(object sender, RoutedEventArgs e)
         {
             if (_isTwoColumn)
                 AnimateToOneColumn();
             txtAddr.Text = txtDrawn.Text = txtFrom.Text = cbTowards.Text = txtPan.Text = txtReceipt.Text = txtRupeeInNumber.Text = txtRupeeInWord.Text = cbVide.Text = dtDate.Text = string.Empty;
+            cbFinYear_Selected(null, null);
         }
 
         private void AnimateToOneColumn()
