@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.SQLite;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -30,7 +31,7 @@ namespace Saibisa
         public MainWindow()
         {
             InitializeComponent();
-            NewMethod();
+            PopulateMetaData();
 
             DeleteOldFiles();
             CheckIfAdobeInstalled();
@@ -43,7 +44,7 @@ namespace Saibisa
             cbFinYear_Selected(null, null);
         }
 
-        private void NewMethod()
+        private void PopulateMetaData()
         {
             dtDate.SelectedDate = DateTime.Now;
             cbTowards.Items.Add("Donation - General");
@@ -51,13 +52,8 @@ namespace Saibisa
             cbTowards.Items.Add("Donation - Annadhaan");
             cbTowards.Items.Add("Donation - Children Education");
             cbTowards.SelectedIndex = 0;
-            cbFinYear.Items.Add("2018-2019");
-            cbFinYear.Items.Add("2019-2020");
-            cbFinYear.Items.Add("2020-2021");
-            cbFinYear.Items.Add("2021-2022");
-            cbFinYear.Items.Add("2022-2023");
-            cbFinYear.Items.Add("2023-2024");
-            cbFinYear.SelectedIndex = 1;
+            PopulateFinancialYears();
+            cbFinYear.SelectedIndex = 2;
             cbSalutation.Items.Add("Mr.");
             cbSalutation.Items.Add("Ms.");
             cbSalutation.Items.Add("Messrs.");
@@ -66,6 +62,17 @@ namespace Saibisa
             cbVide.Items.Add("Direct Bank Transfer");
             cbVide.Items.Add("Cheque/DD");
             cbVide.SelectedIndex = 0;
+        }
+
+        private void PopulateFinancialYears()
+        {
+            int currentFinYear = DateTime.Now.Month > 4 ? DateTime.Now.Year + 1 : DateTime.Now.Year;
+            for(int i = 0; i< 7; i++)
+            {
+                cbFinYear.Items.Add((currentFinYear - 3).ToString() + '-' + (currentFinYear - 2).ToString().Substring(2, 2));
+                currentFinYear++;
+
+            }
         }
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -237,12 +244,16 @@ namespace Saibisa
                 cbVide.Focus();
                 return false;
             }
-            //if (string.IsNullOrEmpty(txtDrawn.Text.Trim()))
-            //{
-            //    MessageBox.Show("Please enter drawn on", "Drawn on empty", MessageBoxButton.OK, MessageBoxImage.Error);
-            //    txtDrawn.Focus();
-            //    return false;
-            //}
+            int enteredFinYear = 0;
+            int.TryParse(cbFinYear.Text.Substring(0, 4), out enteredFinYear);
+            enteredFinYear++;
+            int dateFinYear = Convert.ToDateTime(dtDate.Text).Month > 4 ? Convert.ToDateTime(dtDate.Text).Year + 1 : Convert.ToDateTime(dtDate.Text).Year;
+            if (enteredFinYear != dateFinYear)
+            {
+                MessageBox.Show("Financial year doesnt match with date. Please correct and try again", "Financial year / Date mismatch", MessageBoxButton.OK, MessageBoxImage.Error);
+                dtDate.Focus();
+                return false;
+            }
             if (string.IsNullOrEmpty(cbTowards.Text.Trim()))
             {
                 MessageBox.Show("Please enter towards", "Towards empty", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -266,13 +277,13 @@ namespace Saibisa
                 PdfReader pdfReader = new PdfReader(path);
                 var myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + $@"{Guid.NewGuid().ToString().Replace('-', '_')}.pdf";
                 if (isSendEmail)
-                    myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + txtReceipt.Text + ".pdf";
+                    myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + cbFinYear.Text+'_'+ txtReceipt.Text + ".pdf";
                 PdfStamper pdfStamper = new PdfStamper(pdfReader, new FileStream(myUniqueFileName, FileMode.Create));
                 AcroFields pdfFormFields = pdfStamper.AcroFields;
                 pdfFormFields.SetField("receiptNo", cbFinYear.Text +@"/"+ txtReceipt.Text);
                 _receiptNo = cbFinYear.Text + @"/" + txtReceipt.Text;
                 pdfFormFields.SetField("date", dtDate.Text);
-                _receiptDate = dtDate.Text;
+                _receiptDate = Convert.ToDateTime(dtDate.Text).ToString("dd-mm-yyyy");
                 pdfFormFields.SetField("from", cbSalutation.Text +" "+ txtFrom.Text);
                 _donorName = cbSalutation.Text + " " + txtFrom.Text;
                 pdfFormFields.SetField("address", txtAddr.Text);
@@ -486,10 +497,10 @@ namespace Saibisa
                                 for (int i = 0; i < dr.FieldCount; i++)
                                 {
                                     string value = dr[i].ToString();
+                                    value = value.Replace("\r\n", " ");
                                     if (value.Contains(","))
                                         value = "\"" + value + "\"";
-
-                                    fs.Write(value + ",");
+                                    fs.Write(value + "~");
                                 }
                                 fs.WriteLine();
                             }
@@ -503,7 +514,7 @@ namespace Saibisa
                 }
             }
         }
-        private IEnumerable<string[]> ReadCsv(string fileName, char delimiter = ',')
+        private IEnumerable<string[]> ReadCsv(string fileName, char delimiter = '~')
         {
             var lines = System.IO.File.ReadAllLines(fileName, Encoding.UTF8).Select(a => a.Split(delimiter));
             return (lines);
@@ -553,6 +564,39 @@ namespace Saibisa
         private void Window_Activated(object sender, EventArgs e)
         {
             cbFinYear_Selected(null,null);
+        }
+
+        private void SaveClicked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (PerformValidation())
+                {
+                    SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+                    saveFileDialog1.Filter = "PDF File | *.pdf";
+                    saveFileDialog1.Title = "Save Receipt";
+                    saveFileDialog1.FileName = "Saibisa_Receipt_" + cbFinYear.Text.Replace('-', '_') + '_' + txtReceipt.Text + ".pdf";
+                    bool? userRes = saveFileDialog1.ShowDialog();
+                    if (userRes.HasValue && userRes.Value != false)
+                    {
+                        if (saveFileDialog1.FileName != "")
+                        {
+                            string fileName = string.Empty;
+                            fileName = GeneratePdf();
+                            if (!string.IsNullOrEmpty(fileName))
+                                File.Copy(fileName, saveFileDialog1.FileName,true);
+                            var res = MessageBox.Show("Receipt saved successfully. Would you like to open it?", "Save successful", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                            if (res == MessageBoxResult.Yes)
+                                Process.Start(saveFileDialog1.FileName);
+                        }
+                    }
+                }
+                    
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show("Unable to save the receipt. The selected folder may not have privilages. Please try using a different folder", "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ResetClicked(object sender, RoutedEventArgs e)

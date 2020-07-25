@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data.SQLite;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows;
 
 namespace Saibisa
@@ -21,6 +22,11 @@ namespace Saibisa
 
         private void InitDb()
         {
+            if (!Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa"))
+                Directory.CreateDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa");
+            if (!Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB"))
+                Directory.CreateDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB");
+
             var dbPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\saibisa\\DB\\saibisa.db";
             string cs = string.Format("URI=file:{0}", dbPath);
             if (!File.Exists(dbPath))
@@ -62,20 +68,41 @@ namespace Saibisa
             this.Left = (screenWidth / 2) - (windowWidth / 2);
             this.Top = (screenHeight / 2) - (windowHeight / 2);
         }
+        private bool PerformValidation()
+        {
+            bool isToEmailValid = Regex.IsMatch(txtUsername.Text, @"\A(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\Z", RegexOptions.IgnoreCase);
+            if (!isToEmailValid)
+            {
+                MessageBox.Show("Please enter valid to email id", "Invalid email", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtUsername.Focus();
+                return false;
+            }
+            if (txtPassword.Password.Length == 0)
+            {
+                MessageBox.Show("Please enter password", "Password empty", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtPassword.Focus();
+                return false;
+            }
+            return true;
+        }
         private void LoginClicked(object sender, RoutedEventArgs e)
         {
-
-            var isValidLogin = ValidateCredentials(txtUsername.Text, txtPassword.Password, "smtp.gmail.com", 587, true);
-            if (isValidLogin)
+            if (PerformValidation())
             {
-                username = txtUsername.Text;
-                password = txtPassword.Password;
-                new MainWindow().Show();
-                this.Close();
-            }
-            else
-            {
-                MessageBox.Show("Invalid login credentials!!!", "Login failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                var isValidLogin = ValidateCredentials(txtUsername.Text, txtPassword.Password, "smtp.gmail.com", 587, true);
+                if (isValidLogin)
+                {
+                    username = txtUsername.Text;
+                    password = txtPassword.Password;
+                    new MainWindow().Show();
+                    this.Close();
+                }
+                else
+                {
+                    var response = MessageBox.Show("Unable to validate. Please check you credentials. Also ensure 'Less secure app access' is enabled in your google account settings. Would you like to enable now?", "Error sending email", MessageBoxButton.YesNo, MessageBoxImage.Error);
+                    if (response == MessageBoxResult.Yes)
+                        System.Diagnostics.Process.Start("https://myaccount.google.com/lesssecureapps");
+                }
             }
 
         }
@@ -97,6 +124,7 @@ namespace Saibisa
                     catch (Exception ex)
                     {
                         Console.WriteLine(string.Format("ValidateCredentials Exception: {0}", ex.Message));
+                        //return true;
                     }
                 }
             }
