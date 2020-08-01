@@ -141,6 +141,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_7BEAA9D4A7E94D5FAE8C94D85F57655B"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_7C2629FE5A46EBB96B5D2C684D4B6C0B"
         "OwnerKey" = "8:_BB8935D013C84444B0966E6C811AC43A"
         "MsmSig" = "8:_UNDEFINED"
@@ -715,6 +721,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7BEAA9D4A7E94D5FAE8C94D85F57655B"
+            {
+            "SourcePath" = "8:..\\Saibisa\\Saibisa_Receipt_Template_80G.pdf"
+            "TargetName" = "8:Saibisa_Receipt_Template_80G.pdf"
+            "Tag" = "8:"
+            "Folder" = "8:_23FB5DBC516443C1947335338B974B08"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_7C2629FE5A46EBB96B5D2C684D4B6C0B"
@@ -1604,7 +1630,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_BB8935D013C84444B0966E6C811AC43A"
             {
-            "SourcePath" = "8:..\\Saibisa\\obj\\Release\\Saibisa.exe"
+            "SourcePath" = "8:..\\Saibisa\\obj\\Debug\\Saibisa.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_23FB5DBC516443C1947335338B974B08"

@@ -155,6 +155,7 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+    <None Include="Saibisa_Receipt_Template_80G.pdf" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

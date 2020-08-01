@@ -147,7 +147,7 @@ namespace Saibisa
                 if (!exists)
                     Directory.CreateDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "//Pdfs");
                 DirectoryInfo d = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "//Pdfs");
-                FileInfo[] Files = d.GetFiles("*.pdf");
+                FileInfo[] Files = d.GetFiles("*.*");
                 foreach (FileInfo file in Files)
                 {
                     try
@@ -273,7 +273,12 @@ namespace Saibisa
         {
             try
             {
-                var path = System.IO.Path.Combine(Environment.CurrentDirectory + "\\Saibisa_Receipt_Template.pdf");
+                string path = string.Empty;
+                if (chk80G.IsChecked.Value && chk80Order.IsChecked.Value)
+                    path = Path.Combine(Environment.CurrentDirectory + "\\Saibisa_Receipt_Template_80G.pdf");
+                else 
+                    path = Path.Combine(Environment.CurrentDirectory + "\\Saibisa_Receipt_Template.pdf");
+
                 PdfReader pdfReader = new PdfReader(path);
                 var myUniqueFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + $@"{Guid.NewGuid().ToString().Replace('-', '_')}.pdf";
                 if (isSendEmail)
@@ -282,8 +287,8 @@ namespace Saibisa
                 AcroFields pdfFormFields = pdfStamper.AcroFields;
                 pdfFormFields.SetField("receiptNo", cbFinYear.Text +@"/"+ txtReceipt.Text);
                 _receiptNo = cbFinYear.Text + @"/" + txtReceipt.Text;
-                pdfFormFields.SetField("date", dtDate.Text);
                 _receiptDate = Convert.ToDateTime(dtDate.Text).ToString("dd-mm-yyyy");
+                pdfFormFields.SetField("date", _receiptDate);
                 pdfFormFields.SetField("from", cbSalutation.Text +" "+ txtFrom.Text);
                 _donorName = cbSalutation.Text + " " + txtFrom.Text;
                 pdfFormFields.SetField("address", txtAddr.Text);
@@ -305,6 +310,14 @@ namespace Saibisa
                 }
                 pdfStamper.FormFlattening = true;
                 pdfStamper.Close();
+                var newFileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Pdfs\\" + $@"{Guid.NewGuid().ToString().Replace('-', '_')}.pdf";
+
+                PdfReader reader = new PdfReader(myUniqueFileName);
+                PdfStamper stamper = new PdfStamper(reader, new FileStream(newFileName, FileMode.Create), PdfWriter.VERSION_1_5);
+                reader.SetPageContent(1, reader.GetPageContent(1));
+                stamper.SetFullCompression();
+                stamper.Close();
+
                 if (!isSendEmail)
                 {
                     if (_isAdobeInstalled)
@@ -575,7 +588,7 @@ namespace Saibisa
                     SaveFileDialog saveFileDialog1 = new SaveFileDialog();
                     saveFileDialog1.Filter = "PDF File | *.pdf";
                     saveFileDialog1.Title = "Save Receipt";
-                    saveFileDialog1.FileName = "Saibisa_Receipt_" + cbFinYear.Text.Replace('-', '_') + '_' + txtReceipt.Text + ".pdf";
+                    saveFileDialog1.FileName = cbFinYear.Text + '-' + txtReceipt.Text + ".pdf";
                     bool? userRes = saveFileDialog1.ShowDialog();
                     if (userRes.HasValue && userRes.Value != false)
                     {
@@ -597,6 +610,18 @@ namespace Saibisa
             {
                 MessageBox.Show("Unable to save the receipt. The selected folder may not have privilages. Please try using a different folder", "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void chk80Order_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!chk80G.IsChecked.Value)
+                chk80Order.IsChecked = false;
+        }
+
+        private void chk80G_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!chk80G.IsChecked.Value)
+                chk80Order.IsChecked = false;
         }
 
         private void ResetClicked(object sender, RoutedEventArgs e)
@@ -665,12 +690,15 @@ namespace Saibisa
                 imgWarning.Visibility = Visibility.Visible;
                 chk80G.IsChecked = false;
                 chk80G.IsEnabled = false;
+                chk80Order.IsChecked = false;
+                chk80Order.IsEnabled = false;
             }
             else
             {
                 imgWarning.Visibility = Visibility.Hidden;
                 chk80G.IsEnabled = true;
                 chk80G.IsChecked = true;
+                chk80Order.IsEnabled = true;
             }
         }
     }

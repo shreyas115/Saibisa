@@ -30,14 +30,14 @@ namespace Saibisa
 
 Greetings.
 
-The trustees, volunteers and children of SAIBISA thank you for your great support and noble gesture.Your contribution goes a long way in realizing the objective and fulfilling the dreams of another girl child.
+The Trustees, Volunteers and Children of SAIBISA thank you for your prodigious support and noble gesture. Your contribution goes a long way in realizing the objective and fulfilling the dreams of another girl child.
+
+We request your continued support and patronage.
 
 Thank you, again.
 
 Warm Regards,
-
-Ms.Jaya Wahi
-Managing Trustee
+Team SAIBISA
 ";
             message.Text = string.Format(greeting, name);
         }

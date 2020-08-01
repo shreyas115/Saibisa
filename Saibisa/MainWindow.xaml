@@ -104,7 +104,10 @@
                 <StackPanel Orientation="Vertical" Margin="0,0,10,0">
                     <Label Content="Payment Details" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
                     <TextBox x:Name="txtDrawn" FontFamily="Arial" FontSize="14" VerticalAlignment="Center"/>
-                    <CheckBox x:Name="chk80G" Content="80G Allowed" IsChecked="True" Margin="0,8,0,0" VerticalAlignment="Top" FontFamily="Arial" FontSize="14" />
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox x:Name="chk80G" Checked="chk80G_Checked" Content="80G Allowed" IsChecked="True" Margin="0,8,0,0" VerticalAlignment="Top" FontFamily="Arial" FontSize="14" />
+                        <CheckBox x:Name="chk80Order" Checked="chk80Order_Checked" Content="Show Order" IsChecked="False" Margin="10,8,0,0" VerticalAlignment="Top" FontFamily="Arial" FontSize="14" />
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
             

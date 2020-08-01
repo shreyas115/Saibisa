@@ -49,7 +49,7 @@
             </StackPanel>
             <StackPanel Orientation="Vertical" VerticalAlignment="Top" Grid.Row="2" Height="200" Grid.Column="0" Grid.ColumnSpan="2">
                 <Label Content="Message" FontSize="16" FontWeight="Bold" Foreground="#942417" Margin="20,0,20,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                <TextBox Name="message" FontSize="16" Margin="20,0,20,0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Height="150"/>
+                <TextBox Name="message" FontSize="16" Margin="20,0,20,0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Height="150" AcceptsReturn="True"/>
             </StackPanel>
         </Grid>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Center" Grid.Row="4" Margin="0,10,0,10">
