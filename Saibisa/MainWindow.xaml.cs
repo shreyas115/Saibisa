@@ -214,17 +214,14 @@ namespace Saibisa
             }
             System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex("^[a-zA-Z]{5}[0-9]{4}[a-zA-Z]{1}$");
             Match match = regex.Match(txtPan.Text);
-            if (!match.Success)
-            {
-                MessageBox.Show("Please enter valid PAN", "Invalid PAN", MessageBoxButton.OK, MessageBoxImage.Error);
-                txtPan.Focus();
-                return false;
-            }
-            if (string.IsNullOrEmpty(txtAddr.Text.Trim()))
-            {
-                MessageBox.Show("Please enter address", "Address empty", MessageBoxButton.OK, MessageBoxImage.Error);
-                txtAddr.Focus();
-                return false;
+            if (!string.IsNullOrEmpty(txtPan.Text.Trim()))
+            { 
+                if (!match.Success)
+                {
+                    MessageBox.Show("Please enter valid PAN", "Invalid PAN", MessageBoxButton.OK, MessageBoxImage.Error);
+                    txtPan.Focus();
+                    return false;
+                }
             }
             if (string.IsNullOrEmpty(txtRupeeInNumber.Text.Trim()))
             {
@@ -247,7 +244,7 @@ namespace Saibisa
             int enteredFinYear = 0;
             int.TryParse(cbFinYear.Text.Substring(0, 4), out enteredFinYear);
             enteredFinYear++;
-            int dateFinYear = Convert.ToDateTime(dtDate.Text).Month > 4 ? Convert.ToDateTime(dtDate.Text).Year + 1 : Convert.ToDateTime(dtDate.Text).Year;
+            int dateFinYear = Convert.ToDateTime(dtDate.Text).Month >= 4 ? Convert.ToDateTime(dtDate.Text).Year + 1 : Convert.ToDateTime(dtDate.Text).Year;
             if (enteredFinYear != dateFinYear)
             {
                 MessageBox.Show("Financial year doesnt match with date. Please correct and try again", "Financial year / Date mismatch", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -287,7 +284,14 @@ namespace Saibisa
                 AcroFields pdfFormFields = pdfStamper.AcroFields;
                 pdfFormFields.SetField("receiptNo", cbFinYear.Text +@"/"+ txtReceipt.Text);
                 _receiptNo = cbFinYear.Text + @"/" + txtReceipt.Text;
-                _receiptDate = Convert.ToDateTime(dtDate.Text).ToString("dd-mm-yyyy");
+                var day = Convert.ToDateTime(dtDate.Text).Day.ToString();
+                if (day.Length == 1)
+                    day = "0" + day;
+                var month = Convert.ToDateTime(dtDate.Text).Month.ToString();
+                if (month.Length == 1)
+                    month = "0" + month;
+                var year = Convert.ToDateTime(dtDate.Text).Year.ToString();
+                _receiptDate = day + '-'+ month +'-'+ year;
                 pdfFormFields.SetField("date", _receiptDate);
                 pdfFormFields.SetField("from", cbSalutation.Text +" "+ txtFrom.Text);
                 _donorName = cbSalutation.Text + " " + txtFrom.Text;
